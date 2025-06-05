@@ -1,13 +1,16 @@
 # Solenoid Controller – Wemos D1 mini (ESP8266)
+WARNING: This code and the readmy was written from AI. So don't trust it (But it works :)
 
 Firmware that turns a Wemos D1 mini into a **stand-alone irrigation / fluid-control brain**:
 
 * Drives **three solenoid valves** (via MOSFETs) on pins **D2, D3, D4**  
 * Two on-board **buttons** (D7 & D6) provide instant manual control and configuration access  
-* A long press on **Button 1** brings up a **Wi-Fi Access-Point + responsive web app** where you can:
+* **Wi-Fi Access-Point** starts automatically on device power-up and provides a **responsive web app** where you can:
   * Set individual valve ON-times (ms)
   * Fire a valve for testing
   * See live status
+* A long press on **Button 1** can also be used to start the Wi-Fi AP if it has been turned off
+* Wi-Fi automatically turns off after 30 minutes if no devices are connected to save power
 
 Settings are saved in EEPROM, so they survive power-cycles.
 
@@ -39,21 +42,6 @@ Settings are saved in EEPROM, so they survive power-cycles.
 
 ### 1.3 Wiring Diagram (ASCII)
 
-```
-           +12 V
-             │
-        .----┴------.               ┌─────────────────────┐
-        │ Solenoid  │<───+----------┤ Wemos D1 mini       │
-        │   Coil 1  │    │          │                     │
-        '-----------'    │          │        D2 ──┐ gate ─┴─ MOSFET Q1
-             ^ Fly-back  │          │             │
-             | Diode D1  │          │        D3 ──┐ gate ─┴─ MOSFET Q2
-GND ◄────────┴───────────┴─…        │             │
-                                    │        D4 ──┐ gate ─┴─ MOSFET Q3
-Buttons:                             │             │
-  BTN1 ▸ D7 ───┐                     │             └───► Solenoid returns to GND
-               └───► GND            └─────────────────────┘
-  BTN2 ▸ D6 ───┘   (internal pull-ups enabled)
 ```
 
 *Connect all grounds together (ESP, MOSFET sources, PSU, solenoids).*
@@ -111,13 +99,15 @@ pio device monitor # view serial logs
 
 ### 3.2 Wi-Fi Configuration Mode
 
-1. Hold **Button 1** for 5 s → blue LED blinks  
-2. Connect phone/PC to Wi-Fi **`SolenoidController`** (pass `12345678`)  
-3. Open **http://192.168.4.1** or **http://solenoid.local**  
-4. Use the web app to:
+1. Wi-Fi AP starts automatically when device powers on
+2. If Wi-Fi is off, hold **Button 1** for 5 s → blue LED blinks to turn it on
+3. Connect phone/PC to Wi-Fi **`SolenoidController`** (pass `12345678`)  
+4. Open **http://192.168.4.1** or **http://solenoid.local**  
+5. Use the web app to:
    * Change ON-times (100 ms – 65 s+)
    * Press **Test** to fire a valve instantly
    * Save – values stored in EEPROM
+6. Wi-Fi will automatically turn off after 30 minutes if no devices are connected
 
 ### 3.3 Serial Debug
 
@@ -148,7 +138,8 @@ Example:
 ## 5  Customisation
 
 * Change default SSID / password in `src/main.cpp`
-* Adjust default ON-times (`solenoid*_Settings`)  
+* Adjust default ON-times (`solenoid*_Settings`)
+* Modify WiFi auto-off time (`WIFI_AUTO_OFF_TIME` constant, default 30 minutes)
 * Uncomment `ESP.wdtEnable()` to enable watchdog (test stability)
 
 ---
