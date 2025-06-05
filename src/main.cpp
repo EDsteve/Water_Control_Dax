@@ -280,8 +280,8 @@ void handleRoot() {
     .solenoid-group { margin-bottom: 25px; padding: 20px; border: 1px solid #dfe1e5; border-radius: 8px; background-color: #f8f9fa; }
     .solenoid-group h2 { margin-top: 0; color: #34495e; font-size: 1.3em; border-bottom: 1px solid #dfe1e5; padding-bottom: 10px; margin-bottom: 15px; }
     label { display: inline-block; width: 140px; margin-bottom: 8px; font-weight: 500; }
-    input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100px; box-sizing: border-box; margin-right:10px; }
-    button { background-color: #1a73e8; color: white; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 0.95em; transition: background-color 0.2s; }
+    input[type="number"] { padding: 12px; border: 1px solid #ccc; border-radius: 5px; width: 120px; box-sizing: border-box; float: right; font-size: 1.2em; font-weight: bold; }
+    button { background-color: #1a73e8; color: white; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 0.95em; transition: background-color 0.2s; margin-top: 10px; }
     button:hover { background-color: #1558b0; }
     .save-button { background-color: #28a745; display: block; width: 100%; padding: 12px; font-size: 1.1em; margin-top: 10px;}
     .save-button:hover { background-color: #218838; }
@@ -289,9 +289,11 @@ void handleRoot() {
     .test-button:hover { background-color: #e0a800; }
     .test-button.active { background-color: #dc3545; color: white; }
     .test-button.active:hover { background-color: #c82333; }
-    .status { margin-top: 20px; padding: 12px; border-radius: 5px; display: none; text-align: center; }
-    .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .timer-button { background-color: #17a2b8; color: white; margin-left: 5px; float: right; }
+    .timer-button:hover { background-color: #138496; }
+    .timer-button.active { background-color: #dc3545; }
+    .timer-button.active:hover { background-color: #c82333; }
+    /* Status messages removed as requested */
   </style>
 </head>
 <body>
@@ -301,44 +303,53 @@ void handleRoot() {
     <form id="settingsForm">
       <div class="solenoid-group">
         <h2>Solenoid 1 (Pin D2)</h2>
-        <div>
-          <label for="solenoid1Time">ON Time (min):</label>
-          <input type="number" id="solenoid1Time" name="solenoid1Time" min="1" step="1" value="1">
-          <button type="button" class="test-button" id="testSolenoid1">Turn ON</button>
+        <div style="position: relative;">
+          <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+            <label for="solenoid1Time" style="text-align: center; margin-right: 10px; width: auto;">ON Time (min):</label>
+            <input type="number" id="solenoid1Time" name="solenoid1Time" min="1" step="1" value="1" style="float: none;">
+          </div>
+          <div style="clear: both; text-align: right;">
+            <button type="button" class="test-button" id="testSolenoid1">Turn ON</button>
+          </div>
         </div>
       </div>
       
       <div class="solenoid-group">
         <h2>Solenoid 2 (Pin D3)</h2>
-        <div>
-          <label for="solenoid2Time">ON Time (min):</label>
-          <input type="number" id="solenoid2Time" name="solenoid2Time" min="1" step="1" value="1">
-          <button type="button" class="test-button" id="testSolenoid2">Turn ON</button>
+        <div style="position: relative;">
+          <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+            <label for="solenoid2Time" style="text-align: center; margin-right: 10px; width: auto;">ON Time (min):</label>
+            <input type="number" id="solenoid2Time" name="solenoid2Time" min="1" step="1" value="1" style="float: none;">
+          </div>
+          <div style="clear: both; text-align: right;">
+            <button type="button" class="test-button" id="testSolenoid2">Turn ON</button>
+          </div>
         </div>
       </div>
       
       <div class="solenoid-group">
         <h2>Solenoid 3 (Pin D4)</h2>
-        <div>
-          <label for="solenoid3Time">ON Time (min):</label>
-          <input type="number" id="solenoid3Time" name="solenoid3Time" min="1" step="1" value="1">
-          <button type="button" class="test-button" id="testSolenoid3">Turn ON</button>
+        <div style="position: relative;">
+          <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+            <label for="solenoid3Time" style="text-align: center; margin-right: 10px; width: auto;">ON Time (min):</label>
+            <input type="number" id="solenoid3Time" name="solenoid3Time" min="1" step="1" value="1" style="float: none;">
+          </div>
+          <div style="clear: both; text-align: right;">
+            <button type="button" class="test-button" id="testSolenoid3">Turn ON</button>
+          </div>
         </div>
       </div>
       
       <button type="submit" class="save-button">Save All Settings</button>
     </form>
     
-    <div id="statusMessage" class="status"></div>
+    <!-- Status message div removed -->
   </div>
 
   <script>
     function showStatus(message, isSuccess) {
-      const statusElement = document.getElementById('statusMessage');
-      statusElement.textContent = message;
-      statusElement.className = 'status ' + (isSuccess ? 'success' : 'error');
-      statusElement.style.display = 'block';
-      setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
+      // Status messages disabled as requested
+      console.log(message);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -408,9 +419,73 @@ void handleRoot() {
         };
       }
       
+      function createTimerButtonHandler(solenoidNum) {
+        return function() {
+          const button = document.getElementById('timerSolenoid' + solenoidNum);
+          const timeValue = parseInt(document.getElementById('solenoid' + solenoidNum + 'Time').value);
+          
+          if (button.classList.contains('active')) {
+            // Timer is running, stop it
+            clearTimeout(window['timerTimeout' + solenoidNum]);
+            button.textContent = 'Start Timer';
+            button.classList.remove('active');
+            showStatus(`Timer for Solenoid ${solenoidNum} stopped`, true);
+          } else {
+            // Start timer
+            const minutes = timeValue;
+            const milliseconds = minutes * 60 * 1000;
+            
+            // Update button state
+            button.textContent = `${minutes}m remaining`;
+            button.classList.add('active');
+            
+            // Show status
+            showStatus(`Timer started for Solenoid ${solenoidNum}: ${minutes} minutes`, true);
+            
+            // Start the solenoid
+            document.getElementById('testSolenoid' + solenoidNum).click();
+            
+            // Set countdown display
+            let remainingTime = milliseconds;
+            const updateInterval = 1000; // Update every second
+            
+            function updateTimerDisplay() {
+              remainingTime -= updateInterval;
+              const remainingMinutes = Math.floor(remainingTime / (60 * 1000));
+              const remainingSeconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+              
+              if (remainingTime <= 0) {
+                // Timer finished
+                button.textContent = 'Start Timer';
+                button.classList.remove('active');
+                
+                // Turn off the solenoid if it's still on
+                const onOffButton = document.getElementById('testSolenoid' + solenoidNum);
+                if (onOffButton.classList.contains('active')) {
+                  onOffButton.click();
+                }
+                
+                showStatus(`Timer for Solenoid ${solenoidNum} completed`, true);
+              } else {
+                // Update display
+                button.textContent = `${remainingMinutes}m ${remainingSeconds}s`;
+                
+                // Continue countdown
+                window['timerTimeout' + solenoidNum] = setTimeout(updateTimerDisplay, updateInterval);
+              }
+            }
+            
+            // Start the countdown
+            window['timerTimeout' + solenoidNum] = setTimeout(updateTimerDisplay, updateInterval);
+          }
+        };
+      }
+      
       document.getElementById('testSolenoid1').addEventListener('click', createTestButtonHandler(1));
       document.getElementById('testSolenoid2').addEventListener('click', createTestButtonHandler(2));
       document.getElementById('testSolenoid3').addEventListener('click', createTestButtonHandler(3));
+      
+      // Timer buttons removed as requested
     });
   </script>
 </body>
