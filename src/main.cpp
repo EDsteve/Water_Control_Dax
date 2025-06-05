@@ -13,8 +13,10 @@ const int BUTTON_1_PIN = D7;
 const int BUTTON_2_PIN = D6;
 
 // Button state variables
-bool button1LastState = HIGH;
-bool button2LastState = HIGH;
+bool button1LastState = HIGH;     // Confirmed stable state
+bool button2LastState = HIGH;     // Confirmed stable state
+bool button1PrevReading = HIGH;   // Previous raw reading
+bool button2PrevReading = HIGH;   // Previous raw reading
 unsigned long button1PressTime = 0;
 unsigned long lastDebounceTime1 = 0;
 unsigned long lastDebounceTime2 = 0;
@@ -31,18 +33,20 @@ unsigned long solenoid3StartTime = 0;
 
 // Settings
 struct SolenoidSettings {
-  unsigned long onTime; // in milliseconds
+  unsigned long onTime; // in minutes
 };
 
-SolenoidSettings solenoid1Settings = {5000}; // Default 5 seconds
-SolenoidSettings solenoid2Settings = {5000}; // Default 5 seconds
-SolenoidSettings solenoid3Settings = {5000}; // Default 5 seconds
+SolenoidSettings solenoid1Settings = {1}; // Default 1 minute
+SolenoidSettings solenoid2Settings = {1}; // Default 1 minute
+SolenoidSettings solenoid3Settings = {1}; // Default 1 minute
 
 // WiFi and webserver
 const char* ssid = "SolenoidController";
 const char* password = "12345678";
 ESP8266WebServer server(80);
 bool apActive = false;
+unsigned long wifiStartTime = 0;
+const unsigned long WIFI_AUTO_OFF_TIME = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 // EEPROM addresses
 const int EEPROM_SIZE = 512; // Size of EEPROM to use
@@ -94,6 +98,10 @@ void setup() {
   log("Button 1 (D7): Long press (>5s) for WiFi AP, short press for Solenoids 1 & 2");
   log("Button 2 (D6): Short press for Solenoid 3");
   
+  // Automatically turn on WiFi at startup
+  log("Automatically starting WiFi Access Point...");
+  setupAccessPoint();
+  
   // Enable the Watchdog Timer
   // ESP.wdtEnable(8000); // 8 seconds timeout - causes issues with AP mode sometimes.
   // Consider enabling if stability issues arise and test thoroughly.
@@ -109,17 +117,17 @@ void loop() {
   // Check if any solenoid needs to be turned off
   unsigned long currentTime = millis();
   
-  if (solenoid1Active && (currentTime - solenoid1StartTime >= solenoid1Settings.onTime)) {
+  if (solenoid1Active && (currentTime - solenoid1StartTime >= solenoid1Settings.onTime * 60000)) {
     deactivateSolenoid(1);
     solenoid1Active = false;
   }
   
-  if (solenoid2Active && (currentTime - solenoid2StartTime >= solenoid2Settings.onTime)) {
+  if (solenoid2Active && (currentTime - solenoid2StartTime >= solenoid2Settings.onTime * 60000)) {
     deactivateSolenoid(2);
     solenoid2Active = false;
   }
   
-  if (solenoid3Active && (currentTime - solenoid3StartTime >= solenoid3Settings.onTime)) {
+  if (solenoid3Active && (currentTime - solenoid3StartTime >= solenoid3Settings.onTime * 60000)) {
     deactivateSolenoid(3);
     solenoid3Active = false;
   }
@@ -129,6 +137,22 @@ void loop() {
     server.handleClient();
     if (MDNS.isRunning()) {
         MDNS.update();
+    }
+    
+    // Check if WiFi should be turned off due to inactivity
+    if (currentTime - wifiStartTime >= WIFI_AUTO_OFF_TIME) {
+      // Check if there are any active connections
+      if (WiFi.softAPgetStationNum() == 0) {
+        log("No active WiFi connections for 30 minutes. Turning off WiFi...");
+        WiFi.softAPdisconnect(true);
+        WiFi.mode(WIFI_OFF);
+        apActive = false;
+        log("WiFi turned off");
+      } else {
+        // Reset the timer if there are active connections
+        wifiStartTime = currentTime;
+        log("Active WiFi connections detected. Keeping WiFi on.");
+      }
     }
   }
 }
@@ -140,12 +164,14 @@ void handleButtons() {
   unsigned long currentTime = millis();
   
   // Button 1 (D7) logic
-  if (button1Reading != button1LastState) {
+  // Only reset debounce timer when the raw reading changes from previous reading
+  if (button1Reading != button1PrevReading) {
     lastDebounceTime1 = currentTime;
+    button1PrevReading = button1Reading;
   }
   
   if ((currentTime - lastDebounceTime1) > debounceDelay) {
-    if (button1Reading != button1LastState) { // State has changed
+    if (button1Reading != button1LastState) { // State has changed and is stable
         button1LastState = button1Reading;
         if (button1Reading == LOW) { // Button pressed
             button1PressTime = currentTime;
@@ -156,12 +182,12 @@ void handleButtons() {
                 // Short press detected
                 log("Short press on Button 1 (D7). Activating Solenoids 1 & 2.");
                 if (!solenoid1Active) {
-                    activateSolenoid(1, solenoid1Settings.onTime);
+                    activateSolenoid(1, solenoid1Settings.onTime * 60000);
                     solenoid1Active = true;
                     solenoid1StartTime = currentTime;
                 }
                 if (!solenoid2Active) {
-                    activateSolenoid(2, solenoid2Settings.onTime);
+                    activateSolenoid(2, solenoid2Settings.onTime * 60000);
                     solenoid2Active = true;
                     solenoid2StartTime = currentTime;
                 }
@@ -183,17 +209,19 @@ void handleButtons() {
   }
   
   // Button 2 (D6) logic
-  if (button2Reading != button2LastState) {
+  // Only reset debounce timer when the raw reading changes from previous reading
+  if (button2Reading != button2PrevReading) {
     lastDebounceTime2 = currentTime;
+    button2PrevReading = button2Reading;
   }
   
   if ((currentTime - lastDebounceTime2) > debounceDelay) {
-    if (button2Reading != button2LastState) { // State has changed
+    if (button2Reading != button2LastState) { // State has changed and is stable
         button2LastState = button2Reading;
         if (button2Reading == LOW) { // Button pressed
             log("Button 2 (D6) pressed. Activating Solenoid 3.");
             if (!solenoid3Active) {
-                activateSolenoid(3, solenoid3Settings.onTime);
+                activateSolenoid(3, solenoid3Settings.onTime * 60000);
                 solenoid3Active = true;
                 solenoid3StartTime = currentTime;
             }
@@ -203,6 +231,12 @@ void handleButtons() {
 }
 
 void setupAccessPoint() {
+  // If WiFi is already active, don't set it up again
+  if (apActive) {
+    log("WiFi Access Point is already active.");
+    return;
+  }
+  
   log("Setting up WiFi Access Point...");
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid, password);
@@ -228,6 +262,7 @@ void setupAccessPoint() {
   // Start server
   server.begin();
   apActive = true;
+  wifiStartTime = millis(); // Start the WiFi timer
   log("HTTP server started");
 }
 
@@ -252,6 +287,8 @@ void handleRoot() {
     .save-button:hover { background-color: #218838; }
     .test-button { background-color: #ffc107; color: #212529; }
     .test-button:hover { background-color: #e0a800; }
+    .test-button.active { background-color: #dc3545; color: white; }
+    .test-button.active:hover { background-color: #c82333; }
     .status { margin-top: 20px; padding: 12px; border-radius: 5px; display: none; text-align: center; }
     .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -265,27 +302,27 @@ void handleRoot() {
       <div class="solenoid-group">
         <h2>Solenoid 1 (Pin D2)</h2>
         <div>
-          <label for="solenoid1Time">ON Time (ms):</label>
-          <input type="number" id="solenoid1Time" name="solenoid1Time" min="100" step="100" value="5000">
-          <button type="button" class="test-button" id="testSolenoid1">Test</button>
+          <label for="solenoid1Time">ON Time (min):</label>
+          <input type="number" id="solenoid1Time" name="solenoid1Time" min="1" step="1" value="1">
+          <button type="button" class="test-button" id="testSolenoid1">Turn ON</button>
         </div>
       </div>
       
       <div class="solenoid-group">
         <h2>Solenoid 2 (Pin D3)</h2>
         <div>
-          <label for="solenoid2Time">ON Time (ms):</label>
-          <input type="number" id="solenoid2Time" name="solenoid2Time" min="100" step="100" value="5000">
-          <button type="button" class="test-button" id="testSolenoid2">Test</button>
+          <label for="solenoid2Time">ON Time (min):</label>
+          <input type="number" id="solenoid2Time" name="solenoid2Time" min="1" step="1" value="1">
+          <button type="button" class="test-button" id="testSolenoid2">Turn ON</button>
         </div>
       </div>
       
       <div class="solenoid-group">
         <h2>Solenoid 3 (Pin D4)</h2>
         <div>
-          <label for="solenoid3Time">ON Time (ms):</label>
-          <input type="number" id="solenoid3Time" name="solenoid3Time" min="100" step="100" value="5000">
-          <button type="button" class="test-button" id="testSolenoid3">Test</button>
+          <label for="solenoid3Time">ON Time (min):</label>
+          <input type="number" id="solenoid3Time" name="solenoid3Time" min="1" step="1" value="1">
+          <button type="button" class="test-button" id="testSolenoid3">Turn ON</button>
         </div>
       </div>
       
@@ -346,18 +383,27 @@ void handleRoot() {
       
       function createTestButtonHandler(solenoidNum) {
         return function() {
+          const button = document.getElementById('testSolenoid' + solenoidNum);
           fetch('/activateSolenoid' + solenoidNum, { method: 'POST' })
           .then(response => response.json())
           .then(data => {
             if (data.status === 'success') {
-              showStatus(`Solenoid ${solenoidNum} activated!`, true);
+              if (data.state === 'on') {
+                showStatus(`Solenoid ${solenoidNum} turned ON!`, true);
+                button.textContent = 'Turn OFF';
+                button.classList.add('active');
+              } else {
+                showStatus(`Solenoid ${solenoidNum} turned OFF!`, true);
+                button.textContent = 'Turn ON';
+                button.classList.remove('active');
+              }
             } else {
-              showStatus(`Failed to activate Solenoid ${solenoidNum}: ` + (data.message || ''), false);
+              showStatus(`Failed to toggle Solenoid ${solenoidNum}: ` + (data.message || ''), false);
             }
           })
           .catch(error => {
-            console.error('Error activating solenoid:', error);
-            showStatus(`Error activating Solenoid ${solenoidNum}.`, false);
+            console.error('Error toggling solenoid:', error);
+            showStatus(`Error toggling Solenoid ${solenoidNum}.`, false);
           });
         };
       }
@@ -426,12 +472,16 @@ void handleUpdateSettings() {
 void handleActivateSolenoid(int solenoidNum, bool& activeFlag, unsigned long& startTime, unsigned long onTime) {
     String solenoidName = "Solenoid " + String(solenoidNum);
     if (!activeFlag) {
-        activateSolenoid(solenoidNum, onTime);
+        // Activate the solenoid
+        activateSolenoid(solenoidNum, onTime * 60000);
         activeFlag = true;
         startTime = millis();
-        server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"" + solenoidName + " activated\"}");
+        server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"" + solenoidName + " activated\",\"state\":\"on\"}");
     } else {
-        server.send(409, "application/json", "{\"status\":\"error\",\"message\":\"" + solenoidName + " already active\"}");
+        // Deactivate the solenoid
+        deactivateSolenoid(solenoidNum);
+        activeFlag = false;
+        server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"" + solenoidName + " deactivated\",\"state\":\"off\"}");
     }
 }
 
@@ -465,7 +515,7 @@ void activateSolenoid(int solenoidNum, unsigned long duration) {
   else if (pinToActivate == D4) pinName = "D4";
   else pinName = String(pinToActivate); // Fallback to GPIO number if not D2,D3,D4
 
-  log("Solenoid " + String(solenoidNum) + " (Pin " + pinName + ") turned ON for " + String(duration) + "ms");
+  log("Solenoid " + String(solenoidNum) + " (Pin " + pinName + ") turned ON for " + String(duration / 60000.0, 2) + " minutes");
 }
 
 void deactivateSolenoid(int solenoidNum) {
@@ -497,9 +547,9 @@ void loadSettings() {
     EEPROM.get(EEPROM_SOLENOID3_TIME_ADDR, solenoid3Settings.onTime);
     
     log("Settings loaded from EEPROM:");
-    log("  Solenoid 1 ON time: " + String(solenoid1Settings.onTime) + "ms");
-    log("  Solenoid 2 ON time: " + String(solenoid2Settings.onTime) + "ms");
-    log("  Solenoid 3 ON time: " + String(solenoid3Settings.onTime) + "ms");
+    log("  Solenoid 1 ON time: " + String(solenoid1Settings.onTime) + " minutes");
+    log("  Solenoid 2 ON time: " + String(solenoid2Settings.onTime) + " minutes");
+    log("  Solenoid 3 ON time: " + String(solenoid3Settings.onTime) + " minutes");
   } else {
     log("EEPROM magic number not found. Initializing with default settings.");
     // Default settings are already set, just save them and the magic number
@@ -519,9 +569,9 @@ void saveSettings() {
     log("ERROR: Failed to save settings to EEPROM!");
   }
   log("Current settings:");
-  log("  Solenoid 1 ON time: " + String(solenoid1Settings.onTime) + "ms");
-  log("  Solenoid 2 ON time: " + String(solenoid2Settings.onTime) + "ms");
-  log("  Solenoid 3 ON time: " + String(solenoid3Settings.onTime) + "ms");
+  log("  Solenoid 1 ON time: " + String(solenoid1Settings.onTime) + " minutes");
+  log("  Solenoid 2 ON time: " + String(solenoid2Settings.onTime) + " minutes");
+  log("  Solenoid 3 ON time: " + String(solenoid3Settings.onTime) + " minutes");
 }
 
 void log(String message) {
