@@ -81,6 +81,13 @@ const int EEPROM_SOLENOID3_SCHED_ENABLED_ADDR = EEPROM_SOLENOID3_SCHED_MIN_ADDR 
 
 const uint32_t EEPROM_MAGIC_NUMBER = 0xA1B2C3D5; // Updated magic number for new structure
 
+// Helper function to pad numbers with a leading zero
+String padNumber(int number) {
+  if (number < 10) {
+    return "0" + String(number);
+  }
+  return String(number);
+}
 
 // Function prototypes
 void handleRoot();
@@ -185,7 +192,7 @@ void checkScheduledEvents() {
       timeinfo.tm_min == solenoid1Settings.scheduleMinute &&
       timeinfo.tm_yday != last_run_day[0]) {
     
-    log("Solenoid 1 scheduled activation (" + String(solenoid1Settings.scheduleHour) + ":" + String(solenoid1Settings.scheduleMinute).padStart(2, '0') + ")");
+    log("Solenoid 1 scheduled activation (" + String(solenoid1Settings.scheduleHour) + ":" + padNumber(solenoid1Settings.scheduleMinute) + ")");
     if (!solenoid1Active) {
       activateSolenoid(1, solenoid1Settings.onTime * 60000UL);
       solenoid1Active = true;
@@ -202,7 +209,7 @@ void checkScheduledEvents() {
       timeinfo.tm_min == solenoid2Settings.scheduleMinute &&
       timeinfo.tm_yday != last_run_day[1]) {
 
-    log("Solenoid 2 scheduled activation (" + String(solenoid2Settings.scheduleHour) + ":" + String(solenoid2Settings.scheduleMinute).padStart(2, '0') + ")");
+    log("Solenoid 2 scheduled activation (" + String(solenoid2Settings.scheduleHour) + ":" + padNumber(solenoid2Settings.scheduleMinute) + ")");
     if (!solenoid2Active) {
       activateSolenoid(2, solenoid2Settings.onTime * 60000UL);
       solenoid2Active = true;
@@ -219,7 +226,7 @@ void checkScheduledEvents() {
       timeinfo.tm_min == solenoid3Settings.scheduleMinute &&
       timeinfo.tm_yday != last_run_day[2]) {
 
-    log("Solenoid 3 scheduled activation (" + String(solenoid3Settings.scheduleHour) + ":" + String(solenoid3Settings.scheduleMinute).padStart(2, '0') + ")");
+    log("Solenoid 3 scheduled activation (" + String(solenoid3Settings.scheduleHour) + ":" + padNumber(solenoid3Settings.scheduleMinute) + ")");
     if (!solenoid3Active) {
       activateSolenoid(3, solenoid3Settings.onTime * 60000UL);
       solenoid3Active = true;
@@ -748,9 +755,9 @@ void loadSettings() {
     saveSettings();
   }
   // Log current settings after loading or defaulting
-  log("S1: OnTime=" + String(solenoid1Settings.onTime) + "m, Sched=" + String(solenoid1Settings.scheduleHour) + ":" + String(solenoid1Settings.scheduleMinute).padStart(2, '0') + " En=" + solenoid1Settings.scheduleEnabled);
-  log("S2: OnTime=" + String(solenoid2Settings.onTime) + "m, Sched=" + String(solenoid2Settings.scheduleHour) + ":" + String(solenoid2Settings.scheduleMinute).padStart(2, '0') + " En=" + solenoid2Settings.scheduleEnabled);
-  log("S3: OnTime=" + String(solenoid3Settings.onTime) + "m, Sched=" + String(solenoid3Settings.scheduleHour) + ":" + String(solenoid3Settings.scheduleMinute).padStart(2, '0') + " En=" + solenoid3Settings.scheduleEnabled);
+  log("S1: OnTime=" + String(solenoid1Settings.onTime) + "m, Sched=" + String(solenoid1Settings.scheduleHour) + ":" + padNumber(solenoid1Settings.scheduleMinute) + " En=" + solenoid1Settings.scheduleEnabled);
+  log("S2: OnTime=" + String(solenoid2Settings.onTime) + "m, Sched=" + String(solenoid2Settings.scheduleHour) + ":" + padNumber(solenoid2Settings.scheduleMinute) + " En=" + solenoid2Settings.scheduleEnabled);
+  log("S3: OnTime=" + String(solenoid3Settings.onTime) + "m, Sched=" + String(solenoid3Settings.scheduleHour) + ":" + padNumber(solenoid3Settings.scheduleMinute) + " En=" + solenoid3Settings.scheduleEnabled);
 }
 
 void saveSettings() {
