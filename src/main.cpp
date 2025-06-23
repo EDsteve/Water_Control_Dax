@@ -54,7 +54,7 @@ const char* password = "12345678";
 ESP8266WebServer server(80);
 bool apActive = false;
 unsigned long wifiStartTime = 0;
-const unsigned long WIFI_AUTO_OFF_TIME = 1 * 60 * 1000; // 30 minutes in milliseconds
+const unsigned long WIFI_AUTO_OFF_TIME = 20 * 60 * 1000; // 20 minutes in milliseconds
 
 // Timekeeping
 time_t now;
@@ -179,7 +179,7 @@ void loop() {
     }
     if (currentTime - wifiStartTime >= WIFI_AUTO_OFF_TIME) {
       if (WiFi.softAPgetStationNum() == 0) {
-        log("No active WiFi connections for 30 minutes. Shutting down WiFi completely...");
+        log("No active WiFi connections for 20 minutes. Shutting down WiFi completely...");
         shutdownWiFiCompletely();
       } else {
         wifiStartTime = currentTime;
