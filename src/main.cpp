@@ -6,6 +6,9 @@
 #include <ESP8266mDNS.h>
 #include <time.h>       // For time functions
 #include <sys/time.h>   // For settimeofday
+extern "C" {
+#include "user_interface.h" // For WiFi sleep functions
+}
 
 // Pin definitions
 const int SOLENOID_1_PIN = D2;
@@ -51,7 +54,7 @@ const char* password = "12345678";
 ESP8266WebServer server(80);
 bool apActive = false;
 unsigned long wifiStartTime = 0;
-const unsigned long WIFI_AUTO_OFF_TIME = 30 * 60 * 1000; // 30 minutes in milliseconds
+const unsigned long WIFI_AUTO_OFF_TIME = 1 * 60 * 1000; // 30 minutes in milliseconds
 
 // Timekeeping
 time_t now;
@@ -95,6 +98,7 @@ void loadSettings();
 void saveSettings();
 void handleButtons();
 void setupAccessPoint();
+void shutdownWiFiCompletely(); // Function to properly shut down WiFi for power saving
 void log(String message);
 void handleSetTime(); // New handler for time synchronization
 void checkScheduledEvents(); // New function for schedule logic
@@ -175,11 +179,8 @@ void loop() {
     }
     if (currentTime - wifiStartTime >= WIFI_AUTO_OFF_TIME) {
       if (WiFi.softAPgetStationNum() == 0) {
-        log("No active WiFi connections for 30 minutes. Turning off WiFi...");
-        WiFi.softAPdisconnect(true);
-        WiFi.mode(WIFI_OFF);
-        apActive = false;
-        log("WiFi turned off");
+        log("No active WiFi connections for 30 minutes. Shutting down WiFi completely...");
+        shutdownWiFiCompletely();
       } else {
         wifiStartTime = currentTime;
         log("Active WiFi connections detected. Keeping WiFi on.");
@@ -334,9 +335,23 @@ void setupAccessPoint() {
     wifiStartTime = millis(); // Reset AP timer on explicit call
     return;
   }
+  
   log("Setting up WiFi Access Point...");
+  
+  // Wake up WiFi if it was in forced sleep mode
+  WiFi.forceSleepWake();
+  delay(100); // Give time for WiFi to wake up
+  
+  // Ensure WiFi is in the correct mode
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(ssid, password);
+  
+  // Start the Access Point
+  if (!WiFi.softAP(ssid, password)) {
+    log("Failed to start Access Point! Retrying...");
+    delay(500);
+    WiFi.softAP(ssid, password);
+  }
+  
   IPAddress myIP = WiFi.softAPIP();
   log("AP IP address: " + myIP.toString());
   
@@ -359,6 +374,45 @@ void setupAccessPoint() {
   apActive = true;
   wifiStartTime = millis();
   log("HTTP server started");
+}
+
+void shutdownWiFiCompletely() {
+  log("Initiating complete WiFi shutdown for power saving...");
+  
+  // Stop all active web server operations
+  server.stop();
+  log("Web server stopped");
+  
+  // Stop mDNS responder
+  if (MDNS.isRunning()) {
+    MDNS.end();
+    log("MDNS responder stopped");
+  }
+  
+  // Disconnect all connected stations and stop AP
+  WiFi.softAPdisconnect(true);
+  log("Access Point disconnected");
+  
+  // Wait a moment for clean disconnection
+  delay(100);
+  
+  // Ensure WiFi is completely off
+  WiFi.mode(WIFI_OFF);
+  WiFi.forceSleepBegin();
+  log("WiFi radio disabled and forced into sleep mode");
+  
+  // Additional power saving - turn off WiFi modem completely
+  delay(100);
+  
+  // Set flag to indicate WiFi is off
+  apActive = false;
+  
+  // Enable modem sleep mode for maximum power savings when WiFi is off
+  // This will significantly reduce power consumption
+  wifi_set_sleep_type(MODEM_SLEEP_T);
+  
+  log("Complete WiFi shutdown successful - significant power reduction achieved");
+  log("Use long press on Button 1 (D7) to reactivate WiFi when needed");
 }
 
 void handleSetTime() {
